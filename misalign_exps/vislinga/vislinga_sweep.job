@@ -1,0 +1,54 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
+#SBATCH --array=0-23
+#SBATCH --job-name="vislinga_sweep"
+#SBATCH --output=vislinga/slurm_logs/%x_%A_%a.out
+#SBATCH --error=vislinga/slurm_logs/%x_%A_%a.err
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the misalign_exps/ directory:
+#   mkdir -p vislinga/slurm_logs && sbatch vislinga/vislinga_sweep.job
+# then summarise with: python vislinga/collect_results.py --results vislinga/results
+# HF_TOKEN must be set (DINOv3 is gated).
+
+eval "$(conda shell.bash hook)"
+conda activate misalign_exps
+
+MODELS=(
+    # text: OpenCLIP text towers
+    "text openclip:ViT-B-16:laion2b_s34b_b88k"
+    "text openclip:ViT-L-14:laion2b_s32b_b82k"
+    "text openclip:ViT-H-14:laion2b_s32b_b79k"
+    "text openclip:ViT-bigG-14:laion2b_s39b_b160k"
+    # text: sentence transformers
+    "text all-MiniLM-L6-v2"
+    "text all-MiniLM-L12-v2"
+    "text all-mpnet-base-v2"
+    "text gtr-t5-base"
+    "text gtr-t5-large"
+    "text gtr-t5-xl"
+    "text gtr-t5-xxl"
+    # image: DINOv3
+    "image facebook/dinov3-vits16-pretrain-lvd1689m"
+    "image facebook/dinov3-vits16plus-pretrain-lvd1689m"
+    "image facebook/dinov3-vitb16-pretrain-lvd1689m"
+    "image facebook/dinov3-vitl16-pretrain-lvd1689m"
+    "image facebook/dinov3-vith16plus-pretrain-lvd1689m"
+    "image facebook/dinov3-vit7b16-pretrain-lvd1689m"
+    # image: ImageNet-21k ViTs
+    "image google/vit-base-patch16-224-in21k"
+    "image google/vit-large-patch16-224-in21k"
+    "image google/vit-huge-patch14-224-in21k"
+    # image: OpenCLIP vision towers (same checkpoints as the text towers above)
+    "image openclip:ViT-B-16:laion2b_s34b_b88k"
+    "image openclip:ViT-L-14:laion2b_s32b_b82k"
+    "image openclip:ViT-H-14:laion2b_s32b_b79k"
+    "image openclip:ViT-bigG-14:laion2b_s39b_b160k"
+)
+
+read -r MODALITY MODEL <<< "${MODELS[$SLURM_ARRAY_TASK_ID]}"
+echo "task ${SLURM_ARRAY_TASK_ID}: ${MODALITY} ${MODEL} on $(hostname)"
+
+srun python vislinga/eval_vislinga.py --model "$MODEL" --modality "$MODALITY" --out vislinga/results

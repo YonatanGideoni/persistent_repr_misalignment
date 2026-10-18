@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:1
+#SBATCH --job-name="pret_llava_siglipb"
+#SBATCH --output=pret_llava_siglipb.out
+#SBATCH --error=pret_llava_siglipb.err
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the llava/ release root: sbatch slurm_scripts/b/siglipb/pret.job
+# WANDB_API_KEY / HF_TOKEN / HF_HOME are read from the submitting environment.
+# Data and checkpoint locations are set at the top of slurm_scripts/b/siglipb/pret.sh
+# (DATA_DIR, CKPT_DIR); export them to override.
+
+export NCCL_DEBUG=INFO
+
+srun bash slurm_scripts/b/siglipb/pret.sh

@@ -1,0 +1,138 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
+#SBATCH --job-name="vlmb_eval"
+#SBATCH --output=vlmb_eval.out
+#SBATCH --error=vlmb_eval.err
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the llava/ release root: sbatch slurm_scripts/eval/vlmbias/eval_all.job
+# Run inside the ktt_llava environment (see the repo README); credentials come from ../.env.
+
+# Directory holding the trained llava-v1.5-7b-lora-* checkpoints
+CKPT_DIR=${CKPT_DIR:-/path/to/checkpoints}
+
+export NCCL_DEBUG=INFO
+export NCCL_P2P_DISABLE=1
+
+# dinov1b
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-dinov1b,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix dinov1b \
+    --output_path ./logs/vlms_are_biased/dinov1b
+
+# datacompclip
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-datacompclip,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix datacompclip \
+    --output_path ./logs/vlms_are_biased/datacompclip
+
+# vitb
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-vitb,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix vitb \
+    --output_path ./logs/vlms_are_biased/vitb
+
+# siglipb
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-siglipb,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix siglipb \
+    --output_path ./logs/vlms_are_biased/siglipb
+
+# siglip2b
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-siglip2b,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix siglip2b \
+    --output_path ./logs/vlms_are_biased/siglip2b
+
+# deitb
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-deitb,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix deitb \
+    --output_path ./logs/vlms_are_biased/deitb
+
+# beitb
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-beitb,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix beitb \
+    --output_path ./logs/vlms_are_biased/beitb
+
+# vit21b
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-vit21b,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix vit21b \
+    --output_path ./logs/vlms_are_biased/vit21b
+
+# maeb
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-maeb,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix maeb \
+    --output_path ./logs/vlms_are_biased/maeb
+
+# clipb
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-clipb,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix clipb \
+    --output_path ./logs/vlms_are_biased/clipb
+
+# dinov2b
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${CKPT_DIR}/llava-v1.5-7b-lora-dinov2b,model_base=lmsys/vicuna-7b-v1.5 \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix dinov2b \
+    --output_path ./logs/vlms_are_biased/dinov2b

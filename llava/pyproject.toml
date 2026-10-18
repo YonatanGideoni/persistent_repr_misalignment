@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "llava"
+version = "1.2.2.post1+ktt"
+description = "LLaVA-1.5 fork used for the LLaVA experiments of 'Persistent Representational Misalignment Induces Vision-Language Model Failures'."
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: Apache Software License",
+]
+# transformers 4.37.2 is what the paper's final training and evaluation runs used
+# (identified from warning locations in the SLURM logs). accelerate 0.28.0 was used in the
+# training container. torch was the container's build for training and 2.7.1 for evaluation.
+# Other packages were unpinned.
+dependencies = [
+    "torch>=2.1,<2.8", "torchvision",
+    "transformers==4.37.2", "tokenizers>=0.15.1,<0.19", "sentencepiece", "protobuf",
+    "accelerate>=0.28.0,<1.0", "peft<0.14", "huggingface_hub",
+    "numpy", "Pillow", "tqdm", "packaging", "datasets",
+]
+
+[project.optional-dependencies]
+# Training (llava/train/train_mem.py uses attn_implementation="flash_attention_2").
+train = ["deepspeed<0.16", "ninja", "wandb", "flash-attn<2.6"]
+# Only needed for --bits 4/8 training or 4/8-bit loading.
+quant = ["bitsandbytes"]
+build = ["build", "twine"]
+
+[project.urls]
+"Upstream" = "https://github.com/haotian-liu/LLaVA"
+
+[tool.setuptools.packages.find]
+include = ["llava*", "vlms_are_blind_eval*"]

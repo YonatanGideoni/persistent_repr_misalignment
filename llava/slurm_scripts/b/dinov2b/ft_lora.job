@@ -1,0 +1,17 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:1
+#SBATCH --job-name="llava_ft_lora_dinov2b"
+#SBATCH --output=llava_ft_lora_dinov2b.out
+#SBATCH --error=llava_ft_lora_dinov2b.err
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the llava/ release root: sbatch slurm_scripts/b/dinov2b/ft_lora.job
+# WANDB_API_KEY / HF_TOKEN / HF_HOME are read from the submitting environment.
+# Data and checkpoint locations are set at the top of slurm_scripts/b/dinov2b/ft_lora.sh
+# (DATA_DIR, CKPT_DIR); export them to override.
+
+export NCCL_DEBUG=INFO
+
+srun bash slurm_scripts/b/dinov2b/ft_lora.sh

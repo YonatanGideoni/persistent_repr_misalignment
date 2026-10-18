@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:1
+#SBATCH --job-name="opt_hyps_mlp_gen"
+#SBATCH --output=opt_hyps_mlp_gen.out
+#SBATCH --error=opt_hyps_mlp_gen.err
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the misalign_exps/ directory: sbatch scripts/gen/opt_hyps_mlp.job
+# WANDB_API_KEY (or `wandb login`) and optionally HF_HOME are read from your environment.
+
+# Edit these placeholders for your setup
+export COCO_DIR=/path/to/coco2014  # HF datasets cache dir for COCO 2014
+
+eval "$(conda shell.bash hook)"
+conda activate misalign_exps
+
+srun python -m small_scale_failures.generation_failure.opt_hyps \
+    --adapter mlp

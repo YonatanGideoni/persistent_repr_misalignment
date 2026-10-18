@@ -1,0 +1,76 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=8
+#SBATCH --gres=gpu:1
+#SBATCH --job-name="vlmb_eval_finetunes"
+#SBATCH --output=vlmb_eval_finetunes_%a.out
+#SBATCH --error=vlmb_eval_finetunes_%a.err
+#SBATCH --array=0-25
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the llava/ release root: sbatch slurm_scripts/eval/vlmbias/eval_all_finetunes.job
+# Run inside the ktt_llava environment (see the repo README); credentials come from ../.env.
+
+# Directory holding the trained llava-v1.5-7b-lora-* checkpoints
+CKPT_DIR=${CKPT_DIR:-/path/to/checkpoints}
+
+export NCCL_DEBUG=INFO
+export NCCL_P2P_DISABLE=1
+
+MODEL_BASE=lmsys/vicuna-7b-v1.5
+
+# The 26 fine-tuned-ViT candidate-pool models (slurm_scripts/vit_finetunes/,
+# slugs from the MODELS list in slurm_scripts/vit_finetunes/gen_finetune_jobs.py). Array index -> slug below.
+FINETUNE_SLUGS=(
+    fairface_age
+    rorshark_vit
+    deepfake_v2
+    man_woman_face
+    facial_emotions
+    deepfake_vs_real
+    ai_vs_real
+    watermark_vit
+    fairface_gender
+    chest_xray
+    closed_eyes
+    ul_base
+    ul_interior
+    ul_bedroom
+    face_emotion
+    blur_vs_clean
+    human_action
+    watermark_siglip
+    age_siglip
+    gender_mini
+    flowers102
+    oxfordpet
+    cifar100
+    fer2013
+    cifar10
+    stl10
+)
+
+slug="${FINETUNE_SLUGS[$SLURM_ARRAY_TASK_ID]}"
+ckpt="${CKPT_DIR}/llava-v1.5-7b-lora-ft-${slug}"
+out_dir="./logs/vlms_are_biased/ft_${slug}"
+
+if compgen -G "${out_dir}/*/*_results.json" > /dev/null; then
+    echo "=== Skipping ft-${slug}: results already exist in ${out_dir} ==="
+    exit 0
+fi
+
+if [ ! -f "${ckpt}/adapter_model.safetensors" ]; then
+    echo "ERROR: ${ckpt}/adapter_model.safetensors not found."
+    exit 1
+fi
+
+echo "=== Evaluating ft-${slug} on $(hostname) ==="
+python -m lmms_eval \
+    --model llava \
+    --model_args pretrained=${ckpt},model_base=${MODEL_BASE} \
+    --tasks vlms_are_biased \
+    --batch_size 1 \
+    --device cuda:0 \
+    --log_samples \
+    --log_samples_suffix "ft_${slug}" \
+    --output_path "${out_dir}"

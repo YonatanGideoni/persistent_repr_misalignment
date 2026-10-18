@@ -1,0 +1,89 @@
+#!/bin/bash
+#SBATCH --job-name=eval_bongard_all
+#SBATCH --output=%x-%A_%a.out
+#SBATCH --array=0-36
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the llava/ release root: sbatch slurm_scripts/eval/bongard/eval_all_models.job
+# Run inside the ktt_llava environment (see the repo README); credentials come from ../.env.
+
+# Directory holding the trained llava-v1.5-7b-lora-* checkpoints
+CKPT_DIR=${CKPT_DIR:-/path/to/checkpoints}
+
+export NCCL_DEBUG=INFO
+export NCCL_P2P_DISABLE=1
+
+# The 11 original ViT-family models, then the 26 fine-tuned-ViT candidate-pool
+# models (slugs from the MODELS list in slurm_scripts/vit_finetunes/gen_finetune_jobs.py / bench_llava_wino.py).
+MODELS=(
+    ${CKPT_DIR}/llava-v1.5-7b-lora-dinov1b
+    ${CKPT_DIR}/llava-v1.5-7b-lora-datacompclip
+    ${CKPT_DIR}/llava-v1.5-7b-lora-vitb
+    ${CKPT_DIR}/llava-v1.5-7b-lora-siglipb
+    ${CKPT_DIR}/llava-v1.5-7b-lora-siglip2b
+    ${CKPT_DIR}/llava-v1.5-7b-lora-beitb
+    ${CKPT_DIR}/llava-v1.5-7b-lora-deitb
+    ${CKPT_DIR}/llava-v1.5-7b-lora-dinov2b
+    ${CKPT_DIR}/llava-v1.5-7b-lora-vit21b
+    ${CKPT_DIR}/llava-v1.5-7b-lora-maeb
+    ${CKPT_DIR}/llava-v1.5-7b-lora-clipb
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-fairface_age
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-rorshark_vit
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-deepfake_v2
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-man_woman_face
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-facial_emotions
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-deepfake_vs_real
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-ai_vs_real
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-watermark_vit
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-fairface_gender
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-chest_xray
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-closed_eyes
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-ul_base
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-ul_interior
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-ul_bedroom
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-face_emotion
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-blur_vs_clean
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-human_action
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-watermark_siglip
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-age_siglip
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-gender_mini
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-flowers102
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-oxfordpet
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-cifar100
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-fer2013
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-cifar10
+    ${CKPT_DIR}/llava-v1.5-7b-lora-ft-stl10
+)
+
+M="${MODELS[$SLURM_ARRAY_TASK_ID]}"
+
+# bp_with_solutions_10.py writes responses to bongard/results/with_solutions_10/<M>/BP_*/,
+# and eval_bp_with_solutions.py writes bongard/results/with_solutions_10/<M>/scores.json.
+# Since M is an absolute path, the results nest under the full checkpoint path
+# (bongard/results/with_solutions_10/<CKPT_DIR>/<ckpt>/...).
+scores_path="bongard/results/with_solutions_10${M}/scores.json"
+
+if [ -f "$scores_path" ]; then
+    echo "=== Skipping $(basename "$M"): ${scores_path} already exists ==="
+    exit 0
+fi
+
+if [ ! -f "${M}/adapter_model.safetensors" ]; then
+    echo "ERROR: ${M}/adapter_model.safetensors not found."
+    exit 1
+fi
+
+echo "=== Generating Bongard responses for $(basename "$M") on $(hostname) ==="
+srun python -m bongard.experiments.bp_with_solutions_10 --model "$M"
+gen_status=$?
+if [ $gen_status -ne 0 ]; then
+    echo "ERROR: response generation failed for $(basename "$M") (exit $gen_status)"
+    exit $gen_status
+fi
+
+echo "=== Scoring Bongard responses for $(basename "$M") ==="
+srun python -m bongard.experiments.evaluate.eval_bp_with_solutions --model "$M" --mode 10
+echo "=== Done $(basename "$M") ==="

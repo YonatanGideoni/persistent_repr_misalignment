@@ -1,0 +1,27 @@
+diff --git a/lmms_eval/models/simple/llava.py b/lmms_eval/models/simple/llava.py
+index aefc93b6..3b54bf9d 100755
+--- a/lmms_eval/models/simple/llava.py
++++ b/lmms_eval/models/simple/llava.py
+@@ -67,6 +67,8 @@ class Llava(lmms):
+         **kwargs,
+     ) -> None:
+         super().__init__()
++        # Base LLM for LoRA checkpoints (e.g. --model_args pretrained=<lora_ckpt>,model_base=lmsys/vicuna-7b-v1.5)
++        model_base = kwargs.pop("model_base", None)
+         # Do not use kwargs for now
+         assert kwargs == {}, f"Unexpected kwargs: {kwargs}"
+ 
+@@ -95,11 +97,11 @@ class Llava(lmms):
+         model_name = model_name if model_name is not None else get_model_name_from_path(pretrained)
+         try:
+             # Try to load the model with the multimodal argument
+-            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **llava_model_args)
++            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, model_base, model_name, device_map=self.device_map, **llava_model_args)
+         except TypeError:
+             # for older versions of LLaVA that don't have multimodal argument
+             llava_model_args.pop("multimodal", None)
+-            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, None, model_name, device_map=self.device_map, **llava_model_args)
++            self._tokenizer, self._model, self._image_processor, self._max_length = load_pretrained_model(pretrained, model_base, model_name, device_map=self.device_map, **llava_model_args)
+         self._config = self._model.config
+         self.model.eval()
+         if tie_weights:

@@ -1,0 +1,70 @@
+#!/bin/bash
+#SBATCH --job-name=eval_vlmsblind_finetunes
+#SBATCH --output=%x-%A_%a.out
+#SBATCH --array=0-25
+#SBATCH --gres=gpu:1
+#SBATCH --cpus-per-task=8
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the llava/ release root: sbatch slurm_scripts/eval/vlms_are_blind/eval_finetunes.job
+# Run inside the ktt_llava environment (see the repo README); credentials come from ../.env.
+
+# Directory holding the trained llava-v1.5-7b-lora-* checkpoints
+CKPT_DIR=${CKPT_DIR:-/path/to/checkpoints}
+
+export NCCL_DEBUG=INFO
+export NCCL_P2P_DISABLE=1
+
+# The 26 fine-tuned-ViT candidate-pool models (slurm_scripts/vit_finetunes/,
+# slugs from the MODELS list in slurm_scripts/vit_finetunes/gen_finetune_jobs.py). Array index -> checkpoint below.
+SLUGS=(
+  fairface_age
+  rorshark_vit
+  deepfake_v2
+  man_woman_face
+  facial_emotions
+  deepfake_vs_real
+  ai_vs_real
+  watermark_vit
+  fairface_gender
+  chest_xray
+  closed_eyes
+  ul_base
+  ul_interior
+  ul_bedroom
+  face_emotion
+  blur_vs_clean
+  human_action
+  watermark_siglip
+  age_siglip
+  gender_mini
+  flowers102
+  oxfordpet
+  cifar100
+  fer2013
+  cifar10
+  stl10
+)
+
+SLUG="${SLUGS[$SLURM_ARRAY_TASK_ID]}"
+M="${CKPT_DIR}/llava-v1.5-7b-lora-ft-${SLUG}"
+MODEL_NAME=$(basename "$M")
+OUTPUT_DIR="eval_outputs/vlms_are_blind/${MODEL_NAME}"
+
+if [ -f "${OUTPUT_DIR}/results.jsonl.summary.json" ]; then
+  echo "=== Skipping ft-${SLUG}: ${OUTPUT_DIR}/results.jsonl.summary.json already exists ==="
+  exit 0
+fi
+
+if [ ! -f "${M}/adapter_model.safetensors" ]; then
+  echo "ERROR: ${M}/adapter_model.safetensors not found."
+  exit 1
+fi
+
+mkdir -p "$OUTPUT_DIR"
+
+srun python -m vlms_are_blind_eval.evaluate_llava \
+  --model-path "$M" \
+  --model-base lmsys/vicuna-7b-v1.5 \
+  --output "${OUTPUT_DIR}/results.jsonl"

@@ -1,0 +1,20 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:1
+#SBATCH --job-name="gen_mlp_nocsf"
+#SBATCH --output=gen_mlp_nocsf.out
+#SBATCH --error=gen_mlp_nocsf.err
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the misalign_exps/ directory: sbatch scripts/gen/mlp_nocsf.job
+# WANDB_API_KEY (or `wandb login`) and optionally HF_HOME are read from your environment.
+
+# Edit these placeholders for your setup
+OUT_DIR=/path/to/outputs
+export COCO_DIR=/path/to/coco2014  # HF datasets cache dir for COCO 2014
+
+eval "$(conda shell.bash hook)"
+conda activate misalign_exps
+
+srun python -m small_scale_failures.generation_failure.train_gen --out_dir $OUT_DIR/gen/mlp --eval_epoch_frac 0.1 --early_stopping_patience 9999 --adapter_type mlp --exclude_concepts --similarity_filter --lr 1e-3 --wd 1e-2

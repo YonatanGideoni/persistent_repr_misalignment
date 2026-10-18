@@ -1,0 +1,19 @@
+#!/bin/bash
+#SBATCH --cpus-per-task=16
+#SBATCH --gres=gpu:1
+#SBATCH --job-name="finetune_heldout_concC"
+#SBATCH --output=finetune_heldout_concC.out
+#SBATCH --error=finetune_heldout_concC.err
+
+set -a; [ -f ../.env ] && source ../.env; set +a  # credentials: copy ../.env.example to ../.env
+
+# Submit from the llava/ release root: sbatch slurm_scripts/vit/finetune_heldout_concC.job
+# WANDB_API_KEY / HF_TOKEN / HF_HOME are read from the submitting environment.
+# Data and checkpoint locations are set at the top of slurm_scripts/vit/finetune_heldout_concC.sh
+# (DATA_DIR, CKPT_DIR, CONCEPT_TESTSET_DIR); export them to override.
+
+export NCCL_DEBUG=INFO
+
+export CONCEPTS="violin,tractor,flamingo,printer,volcano,volcanic"
+
+srun bash slurm_scripts/vit/finetune_heldout_concC.sh

@@ -1,0 +1,36 @@
+# Python
+__pycache__
+*.pyc
+*.egg-info
+dist
+build
+
+# Editor
+.idea
+*.swp
+.DS_Store
+
+# Run outputs
+wandb
+output
+checkpoints
+bench_output/
+eval_outputs/
+logs/
+*.log
+*.out
+*.err
+
+# Notebooks
+.ipynb_checkpoints
+
+# Clones made by setup_env.sh
+/lmms-eval/
+/bongard/
+
+# HF datasets cache of the lmms-eval OmniSpatial task (cache_dir: omnispatial)
+/omnispatial/
+
+# Default eval outputs
+winoground_llava_*_res.jsonl
+vlms_are_blind_results.jsonl

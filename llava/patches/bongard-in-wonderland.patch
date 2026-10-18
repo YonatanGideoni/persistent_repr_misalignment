@@ -1,0 +1,268 @@
+diff --git a/experiments/bp_with_solutions_10.py b/experiments/bp_with_solutions_10.py
+index 264d084..4303910 100644
+--- a/experiments/bp_with_solutions_10.py
++++ b/experiments/bp_with_solutions_10.py
+@@ -3,13 +3,7 @@ import sys
+ 
+ sys.path.append("/workspace")
+ 
+-from experiments.zero_shot_bp import get_model_prompter
+-from models.gemini.main import Gemini
+-from models.gpt4.prompt_llm import GPT4Prompter
+-from models.claude.main import Claude
+-from models.llava_onevision.main import LlavaOnevisionModel
+-from models.qwen2_vl.main import Qwen2VL
+-from models.internvl2_5.main import InternVL2_5
++from bongard.experiments.zero_shot_bp import get_model_prompter
+ 
+ import os
+ import argparse
+@@ -23,16 +17,16 @@ def main(args):
+ 
+     prompter = get_model_prompter(model)
+ 
+-    system_prompt_path = "prompts/bongard/system_prompt.txt"
++    system_prompt_path = "bongard/prompts/bongard/system_prompt.txt"
+     system_prompt = open(system_prompt_path, "r").read()
+ 
+-    prompt_path = "prompts/bongard/with_solutions.txt"
++    prompt_path = "bongard/prompts/bongard/with_solutions.txt"
+     prompt = open(prompt_path, "r").read()
+ 
+-    solutions_path = "data/solutions/bp_solutions.json"
++    solutions_path = "bongard/data/solutions/bp_solutions.json"
+     solutions = json.load(open(solutions_path))
+ 
+-    top_path = "data/bpimgs"
++    top_path = "bongard/data/bpimgs"
+ 
+     # get all files in folder
+     image_paths = [
+@@ -47,7 +41,7 @@ def main(args):
+ 
+         print(f"Processing BP {id+1} ...")
+ 
+-        for run in [1, 2, 3]:
++        for run in list(range(1, args.n_attempts + 1)):
+ 
+             # correct solution
+             current_solutions = {str(id + 1): solutions[str(id + 1)]}
+@@ -73,14 +67,14 @@ def main(args):
+             start_time = time.time()
+ 
+             response = prompter.prompt_with_images(
+-                current_prompt, [image_path], system_prompt=system_prompt, seed=run
++                current_prompt, [image_path], system_prompt=system_prompt
+             )
+ 
+             end_time = time.time()
+             print(f"Time taken: {end_time-start_time}")
+ 
+             # save response to file
+-            response_path = f"results/bongard/with_solutions_10/{model}/BP_{id+1}/response_run_{run}.txt"
++            response_path = f"bongard/results/with_solutions_10/{model}/BP_{id+1}/response_run_{run}.txt"
+ 
+             if not os.path.exists(os.path.dirname(response_path)):
+                 os.makedirs(os.path.dirname(response_path))
+@@ -93,6 +87,7 @@ if __name__ == "__main__":
+ 
+     parser = argparse.ArgumentParser()
+     parser.add_argument("--model", type=str, default="o1")
++    parser.add_argument("--n_attempts", type=int, default=10)
+ 
+     args = parser.parse_args()
+ 
+diff --git a/experiments/evaluate/collect_results.py b/experiments/evaluate/collect_results.py
+index 3365925..ed4442e 100644
+--- a/experiments/evaluate/collect_results.py
++++ b/experiments/evaluate/collect_results.py
+@@ -22,7 +22,7 @@ def main(models, mode):
+         elif mode == 100:
+             path = f"results/bongard/with_solutions/{model}/scores.json"
+         elif mode == 10:
+-            path = f"results/bongard/with_solutions_10/{model}/scores.json"
++            path = f"bongard/results/with_solutions_10/{model}/scores.json"
+         elif mode == "attributes":
+             path = f"results/bongard/with_attributes/{model}/scores.json"
+ 
+@@ -70,8 +70,8 @@ def main(models, mode):
+     print(df.to_latex())
+ 
+     # save df as csv
+-    df_percentage.to_csv(f"results/bongard/summary_{mode}.csv")
+-    df_runs.to_csv(f"results/bongard/summary_runs_{mode}.csv")
++    df_percentage.to_csv(f"bongard/results/summary_{mode}.csv")
++    df_runs.to_csv(f"bongard/results/summary_runs_{mode}.csv")
+ 
+ 
+ if __name__ == "__main__":
+diff --git a/experiments/evaluate/eval_bp_with_solutions.py b/experiments/evaluate/eval_bp_with_solutions.py
+index c6317d1..0df841f 100644
+--- a/experiments/evaluate/eval_bp_with_solutions.py
++++ b/experiments/evaluate/eval_bp_with_solutions.py
+@@ -1,5 +1,6 @@
+ import json
+ import argparse
++import os
+ 
+ 
+ def parse_response(response_content):
+@@ -54,16 +55,19 @@ def evaluate(model, mode=100):
+ 
+     scores = {}
+     if mode == 100:
+-        path = f"results/bongard/with_solutions/{model}"
++        path = f"bongard/results/with_solutions/{model}"
+     elif mode == 10:
+-        path = f"results/bongard/with_solutions_10/{model}"
++        path = f"bongard/results/with_solutions_10/{model}"
+ 
+     for i in range(1, 101):
+ 
+         scores[i] = []
+-        for run in [1, 2, 3]:
++        for run in list(range(1, 101)):
+ 
+             response_path = f"{path}/BP_{i}/response_run_{run}.txt"
++            if not os.path.exists(response_path):
++                continue
++
+             with open(response_path, "r") as file:
+                 response = file.read()
+ 
+diff --git a/experiments/zero_shot_bp.py b/experiments/zero_shot_bp.py
+index c17c5d5..e6810be 100644
+--- a/experiments/zero_shot_bp.py
++++ b/experiments/zero_shot_bp.py
+@@ -3,18 +3,16 @@ import yaml
+ 
+ sys.path.append("/workspace")
+ 
+-from utils.use_local_models import RUN_LOCAL_MODELS
+-from models.gemini.main import Gemini
+-from models.gpt4.main import GPT4Prompter
+-from models.claude.main import Claude
++from bongard.models.gemini.main import Gemini
++from bongard.models.gpt4.main import GPT4Prompter
++from bongard.models.claude.main import Claude
+ 
+-with open("utils/params.yaml", "r") as file:
++with open("bongard/utils/params.yaml", "r") as file:
+     params = yaml.safe_load(file)
+ RUN_LOCAL_MODELS = params.get("use_local_models", False)
+ if RUN_LOCAL_MODELS:
+-    from models.llava_onevision.main import LlavaOnevisionModel
+-    from models.qwen2_vl.main import Qwen2VL
+-    from models.internvl2_5.main import InternVL2_5
++    from bongard.models.llava_onevision.main import LlavaOnevisionModel
++    from bongard.models.llava.main import LlavaModel
+ 
+ import os
+ import argparse
+@@ -33,9 +31,13 @@ def get_model_prompter(model, key=None):
+     elif model == "LlavaOnevision":
+         prompter = LlavaOnevisionModel()
+     elif model == "Qwen2VL":
++        from bongard.models.qwen2_vl.main import Qwen2VL
+         prompter = Qwen2VL()
+     elif model == "InternVL2_5":
++        from bongard.models.internvl2_5.main import InternVL2_5
+         prompter = InternVL2_5()
++    elif 'llava' in model.lower():
++        prompter = LlavaModel(model)
+     else:
+         raise ValueError(f"Model {model} not supported")
+     return prompter
+diff --git a/models/llava/main.py b/models/llava/main.py
+new file mode 100644
+index 0000000..d7060fa
+--- /dev/null
++++ b/models/llava/main.py
+@@ -0,0 +1,79 @@
++import copy
++import warnings
++
++import torch
++from PIL import Image
++
++from llava.constants import (
++    IMAGE_TOKEN_INDEX,
++    DEFAULT_IMAGE_TOKEN,
++)
++from llava.conversation import conv_templates
++from llava.mm_utils import (
++    process_images,
++    tokenizer_image_token,
++    get_model_name_from_path,
++)
++from llava.model.builder import load_pretrained_model
++
++
++class LlavaModel:
++    def __init__(self, model_path: str, model_base: str = 'lmsys/vicuna-7b-v1.5'):
++        self.pretrained = model_path
++        self.model_name = get_model_name_from_path(model_path)
++        self.device = "cuda"
++        self.device_map = "auto"  # "auto"
++        self.max_tokens = 2048
++
++        warnings.filterwarnings("ignore")
++
++        print("Loading Llava model...")
++        print(f'Path: {self.pretrained}')
++        self.tokenizer, self.model, self.image_processor, self.max_length = (
++            load_pretrained_model(
++                self.pretrained, model_base, self.model_name, device_map=self.device_map
++            )
++        )
++
++        self.model.get_vision_tower().to(self.device)
++
++        print("Model loaded.")
++
++        self.model.eval()
++        self.model.half()
++
++    def prompt_with_images(self, prompt_text, image_paths, system_prompt=None):
++        images = [Image.open(path).convert("RGB") for path in image_paths]
++        image_tensors = process_images(images, self.image_processor, self.model.config)
++        image_tensors = [
++            _image.to(dtype=torch.float16, device=self.device)
++            for _image in image_tensors
++        ]
++
++        conv_template = "llava_v1"
++        question = DEFAULT_IMAGE_TOKEN + prompt_text
++        conv = conv_templates[conv_template].copy()
++        conv.append_message(conv.roles[0], question)
++        conv.append_message(conv.roles[1], None)
++        prompt_question = conv.get_prompt()
++
++        input_ids = (
++            tokenizer_image_token(
++                prompt_question, self.tokenizer, IMAGE_TOKEN_INDEX, return_tensors="pt"
++            )
++            .unsqueeze(0)
++            .to(self.device)
++        )
++        image_sizes = [image.size for image in images]
++
++        cont = self.model.generate(
++            input_ids,
++            images=image_tensors,
++            image_sizes=image_sizes,
++            do_sample=True,
++            max_new_tokens=self.max_tokens,
++        )
++        text_outputs = self.tokenizer.batch_decode(cont, skip_special_tokens=True)
++        print(text_outputs)
++
++        return text_outputs[0]
+diff --git a/utils/params.yaml b/utils/params.yaml
+index d62d08c..a3d8ad2 100644
+--- a/utils/params.yaml
++++ b/utils/params.yaml
+@@ -1,2 +1,2 @@
+ # Set to True if you want to use local models instead of API models
+-use_local_models: False
++use_local_models: True
