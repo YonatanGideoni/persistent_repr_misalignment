@@ -1,8 +1,8 @@
 # Code for "Persistent Representational Misalignment Induces Vision-Language Model Failures"
 
-[![arXiv](https://img.shields.io/badge/arXiv-TODO-b31b1b.svg)](https://arxiv.org/abs/TODO)
+[![arXiv](https://img.shields.io/badge/arXiv-2610.25252-b31b1b.svg)](https://arxiv.org/abs/2610.25252)
 
-This is the code release for [Persistent Representational Misalignment Induces Vision-Language Model Failures](TODO add arxiv link). 
+This is the code release for [Persistent Representational Misalignment Induces Vision-Language Model Failures](https://arxiv.org/abs/2610.25252). 
 
 ## Setup
 
@@ -109,7 +109,7 @@ Everything outside `llava/` is under the MIT license (`LICENSE`). `llava/` is a 
 @article{gideoni2026persistent,
   title={Persistent Representational Misalignment Induces Vision-Language Model Failures},
   author={Gideoni, Yonatan and Gelberg, Yoav and Rudner, Tim G. J. and Gal, Yarin},
-  journal={arXiv preprint},
+  journal={arXiv preprint arXiv:2610.25252},
   year={2026}
 }
 ```
